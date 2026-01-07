@@ -1,12 +1,17 @@
 # 🧠 Memory Recall
 
+[![PyPI version](https://img.shields.io/pypi/v/memory-recall.svg)](https://pypi.org/project/memory-recall/)
 [![Python 3.7+](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Zero Dependencies](https://img.shields.io/badge/dependencies-zero-brightgreen.svg)]()
 
 **Portable memory for AI assistants.** Give any AI instant context about your codebase.
 
-Inspired by [Memvid](https://github.com/memvid/memvid) but built for personal productivity with zero dependencies.
+```bash
+pip install memory-recall
+recall pack /your/project --name my-project
+recall load
+```
 
 ## ✨ Features
 
@@ -17,91 +22,70 @@ Inspired by [Memvid](https://github.com/memvid/memvid) but built for personal pr
 - 📝 **Entity Extraction** - Auto-extracts TODOs, notes, decisions from code
 - 🔄 **Multi-Project** - Switch between projects instantly
 
-## 🚀 Quick Start
+## 🚀 Installation
 
 ```bash
-# Clone the repo
+# Install from PyPI
+pip install memory-recall
+
+# Or clone and use directly
 git clone https://github.com/fnworks-dev/memory-recall.git
-cd memory-recall
-
-# Pack your project
-python3 recall.py pack /path/to/your/project --name my-project
-
-# Get context for AI (copy & paste to ChatGPT, Claude, etc.)
-python3 recall.py load
-
-# That's it! Your AI now knows your project.
+python3 recall.py pack /path/to/project --name my-project
 ```
 
 ## 📖 Usage
 
+### Quick Start
+
+```bash
+# Pack your project
+recall pack ~/projects/frontend --name frontend
+
+# Get context for AI (copy & paste to ChatGPT, Claude, etc.)
+recall load
+
+# That's it! Your AI now knows your project.
+```
+
 ### Project Management
 
 ```bash
-# Pack a project to central store
-recall pack ~/projects/frontend --name frontend
-
-# List all saved projects
-recall list
-
-# Switch between projects
-recall use frontend
-recall use backend
-
-# Update current project (creates snapshot)
-recall update
+recall pack ~/projects/backend --name backend   # Pack a project
+recall list                                      # List all projects
+recall use frontend                              # Switch projects
+recall update                                    # Re-pack (creates snapshot)
 ```
 
 ### Getting Context for AI
 
 ```bash
-# Output context for current project
-recall load
-
-# Time-travel to past state
-recall load --at "2026-01-05"
-
-# View full memory details
-recall show
+recall load                    # Output context for current project
+recall load --at "2026-01-05"  # Time-travel to past state
+recall show                    # View full memory details
 ```
 
 ### Search & Analysis
 
 ```bash
-# Search with BM25 ranking
-recall find "authentication"
-
-# Show changes since last pack
-recall diff
-
-# Show file dependencies
-recall deps pages/api/auth.ts
-
-# View search history
-recall queries
+recall find "authentication"   # BM25-ranked search
+recall diff                    # Changes since last pack
+recall deps pages/api/auth.ts  # File dependencies
+recall queries                 # View search history
 ```
 
 ### Notes & Sessions
 
 ```bash
-# Add project description
-recall describe "E-commerce platform with React frontend and Node backend"
-
-# Log a decision
-recall note "Using Supabase for auth instead of custom JWT"
-
-# Log a session
+recall describe "E-commerce platform with React and Node"
+recall note "Using Supabase for auth instead of JWT"
 recall session "Fixed payment flow, added Stripe integration"
 ```
 
 ### Entity Tracking
 
 ```bash
-# View TODOs, notes, decisions extracted from code
-recall entity pages/api/
-
-# View project history
-recall history
+recall entity pages/api/       # View TODOs, notes from code
+recall history                 # View project snapshots
 ```
 
 ## 📁 How It Works
@@ -145,28 +129,13 @@ frontend: | Stack: React, Next.js, Supabase, TypeScript | 371 files, 96,987 line
 - `lib/` (28 files) - Core libraries
 
 ## Key Files
-- `pages/api/auth/login.ts` - API endpoint (handler)
-- `lib/supabase.ts` - Core library (createClient)
-- `components/Cart.tsx` - UI component (Cart, useCart)
+- `pages/api/auth/login.ts` - API endpoint
+- `lib/supabase.ts` - Core library
+- `components/Cart.tsx` - UI component
 
 ## Decisions
 - [2026-01-07] Using Supabase for auth
-- [2026-01-06] Switched to App Router
 ```
-
-## 🆚 Recall vs Memvid
-
-| Feature | Memvid | Recall |
-|---------|--------|--------|
-| **Purpose** | AI agent memory | Developer context |
-| **Language** | Rust + SDKs | Pure Python |
-| **Dependencies** | Many | Zero |
-| **Search** | Hybrid (Lex + Vec) | BM25 |
-| **Embeddings** | Required for semantic | Not needed |
-| **Time-travel** | ✅ | ✅ |
-| **Use case** | Production agents | Personal productivity |
-
-Recall is intentionally simpler. If you need production-grade AI agent memory, use Memvid.
 
 ## 🛠️ Requirements
 
@@ -179,6 +148,7 @@ MIT License - see [LICENSE](LICENSE)
 
 ## 🔗 Links
 
+- [PyPI Package](https://pypi.org/project/memory-recall/)
 - [Changelog](CHANGELOG.md)
 - [FNworks.dev](https://fnworks.dev)
 

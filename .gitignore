@@ -7,6 +7,7 @@ __pycache__/
 dist/
 build/
 *.egg-info/
+src/*.egg-info/
 
 # Virtual environments
 .venv/
@@ -25,7 +26,6 @@ Thumbs.db
 
 # Test files
 *.mem
-frontend-test.mem
 
 # Local recall data (don't commit user data)
 .recall/

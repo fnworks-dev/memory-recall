@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "memory-recall"
+version = "1.0.0"
+description = "Portable memory for AI assistants. Zero dependencies."
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "FNworks.dev", email = "hello@fnworks.dev"}
+]
+keywords = ["ai", "memory", "cli", "context", "llm", "chatgpt", "claude"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Documentation",
+    "Topic :: Utilities",
+]
+requires-python = ">=3.7"
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/fnworks-dev/memory-recall"
+Documentation = "https://github.com/fnworks-dev/memory-recall#readme"
+Repository = "https://github.com/fnworks-dev/memory-recall"
+Changelog = "https://github.com/fnworks-dev/memory-recall/blob/main/CHANGELOG.md"
+
+[project.scripts]
+recall = "memory_recall.recall:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
