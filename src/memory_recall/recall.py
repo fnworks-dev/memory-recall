@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Recall v1.0.0 - Portable Memory for AI Assistants
+Recall v1.1.0 - Portable Memory for AI Assistants
 Single-file memory with history, search, and entity tracking.
 
 Usage:
@@ -1171,7 +1171,7 @@ def cmd_diff(args) -> None:
 
 
 def cmd_deps(args) -> None:
-    """Show dependencies for a file."""
+    """Show dependencies for a file (imports and reverse imports)."""
     current = get_current_project()
     mem_file = get_memory_path(current) if current else find_mem_file()
     
@@ -1182,8 +1182,20 @@ def cmd_deps(args) -> None:
     memory = load_memory(mem_file)
     target_file = args.file
     import_graph = memory.get("index", {}).get("imports", {})
+    all_files = memory.get("index", {}).get("files", [])
     
+    # Build reverse graph: what files import each file
+    reverse_graph = defaultdict(list)
+    for file_path, imports in import_graph.items():
+        for imp in imports:
+            reverse_graph[imp].append(file_path)
+    
+    # Find matching files
     matching_files = [f for f in import_graph.keys() if target_file in f]
+    
+    if not matching_files:
+        # Also check all_files in case file has no imports
+        matching_files = [f for f in all_files if target_file in f]
     
     if not matching_files:
         print(f"❌ File not found: {target_file}")
@@ -1191,13 +1203,46 @@ def cmd_deps(args) -> None:
     
     for file_path in matching_files[:3]:
         print(f"📁 {file_path}")
+        
+        # Show what this file imports
         imports = import_graph.get(file_path, [])
         if imports:
-            print("   Imports:")
+            print(f"   🔽 Imports ({len(imports)} dependencies):")
             for imp in imports[:10]:
                 print(f"      ← {imp}")
+            if len(imports) > 10:
+                print(f"      ... and {len(imports) - 10} more")
+        
+        # Find files that import this file (reverse deps)
+        importers = []
+        file_basename = file_path.split('/')[-1].replace('.tsx', '').replace('.ts', '').replace('.js', '')
+        
+        for importer_path, importer_imports in import_graph.items():
+            for imp in importer_imports:
+                # Match by basename or partial path
+                if file_basename in imp or file_path in imp:
+                    importers.append(importer_path)
+                    break
+        
+        # Also check reverse graph with normalized paths
+        for imp_key, imp_sources in reverse_graph.items():
+            if file_basename in imp_key or file_path.replace('.tsx', '').replace('.ts', '') in imp_key:
+                for src in imp_sources:
+                    if src not in importers:
+                        importers.append(src)
+        
+        if importers:
+            print(f"   🔼 Imported by ({len(importers)} files):")
+            for importer in sorted(set(importers))[:10]:
+                print(f"      → {importer}")
+            if len(importers) > 10:
+                print(f"      ... and {len(importers) - 10} more")
+        
+        # Impact summary
+        if imports or importers:
+            print(f"   ⚠️  Change impact: {len(set(importers))} files depend on this")
         else:
-            print("   No imports tracked")
+            print("   No dependencies tracked")
         print()
 
 
@@ -1324,7 +1369,7 @@ def find_mem_file() -> Optional[Path]:
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Recall v1.0.0 - Portable Memory for AI Assistants',
+        description='Recall v1.1.0 - Portable Memory for AI Assistants',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     

@@ -5,6 +5,17 @@ All notable changes to Memory Recall will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-01-07
+
+### Added
+- **Reverse Dependencies** - `deps` command now shows "Imported by" (files that use this file)
+- **Impact Summary** - Shows count of files that depend on target file
+
+### Changed
+- `deps` output now shows both directions with clearer icons (🔽/🔼)
+
+---
+
 ## [1.0.0] - 2026-01-07
 
 🎉 **First Public Release**
