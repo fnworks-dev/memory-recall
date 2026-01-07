@@ -1187,7 +1187,6 @@ def cmd_deps(args) -> None:
         sys.exit(1)
     
     memory = load_memory(mem_file)
-    target_file = args.file
     import_graph = memory.get("index", {}).get("imports", {})
     all_files = memory.get("index", {}).get("files", [])
     
@@ -1196,6 +1195,33 @@ def cmd_deps(args) -> None:
     for file_path, imports in import_graph.items():
         for imp in imports:
             reverse_graph[imp].append(file_path)
+    
+    # Handle --top flag: show most depended-on files
+    if args.top:
+        # Count dependents for each file
+        dep_counts = {}
+        for file_path in all_files:
+            file_basename = file_path.split('/')[-1].replace('.tsx', '').replace('.ts', '').replace('.js', '')
+            importers = set()
+            for importer_path, importer_imports in import_graph.items():
+                for imp in importer_imports:
+                    if file_basename in imp or file_path in imp:
+                        importers.add(importer_path)
+                        break
+            dep_counts[file_path] = len(importers)
+        
+        # Sort by dependent count
+        sorted_files = sorted(dep_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+        
+        print("📈 Most Critical Files (by number of dependents):\n")
+        for file_path, count in sorted_files:
+            if count > 0:
+                print(f"   {file_path} ({count} files depend on this)")
+        
+        print("\n💡 Use 'recall deps <file>' to see full dependency details")
+        return
+    
+    target_file = args.file
     
     # Find matching files
     matching_files = [f for f in import_graph.keys() if target_file in f]
@@ -1439,7 +1465,8 @@ def main():
     
     # deps
     deps_parser = subparsers.add_parser('deps', help='Show imports AND what files depend on this (critical before editing!)')
-    deps_parser.add_argument('file', help='File to check')
+    deps_parser.add_argument('file', nargs='?', help='File to check (partial names work: "supabase" finds lib/supabase/client.ts)')
+    deps_parser.add_argument('--top', action='store_true', help='Show top 10 most-depended-on files')
     deps_parser.set_defaults(func=cmd_deps)
     
     # history (v2.5)

@@ -86,6 +86,8 @@ recall show                    # View full details
 ### Dependencies & Search
 ```bash
 recall deps <file>             # Show imports AND what depends on this file
+recall deps supabase           # Partial names work! Finds lib/supabase/client.ts
+recall deps --top              # Show top 10 most-depended-on files
 recall find "query"            # BM25-ranked search
 recall diff                    # Changes since last pack
 ```
