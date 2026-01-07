@@ -6,6 +6,40 @@
 
 **Portable memory for AI assistants.** Give any AI instant context about your codebase.
 
+---
+
+## 🤖 For AI Assistants
+
+> **IMPORTANT**: If you're an AI assistant (ChatGPT, Claude, Cursor, etc.), read this first.
+
+### Before Starting Any Task
+
+```bash
+recall load                    # Get project overview: stack, key files, structure
+```
+
+### Before Modifying ANY File
+
+```bash
+recall deps <filename>         # See what imports this file AND what depends on it
+```
+
+This prevents breaking changes. The `deps` command shows:
+- 🔽 **Imports** - What this file uses
+- 🔼 **Imported by** - What files depend on this (CRITICAL for avoiding breaks)
+- ⚠️ **Change impact** - How many files could be affected
+
+### Quick Reference
+
+| When | Command | Why |
+|------|---------|-----|
+| Starting session | `recall load` | Get full project context |
+| Before editing | `recall deps <file>` | See dependencies + impact |
+| Looking for code | `recall find "query"` | BM25-ranked search |
+| Check what changed | `recall diff` | Files modified since last pack |
+
+---
+
 ## 🚀 Install
 
 ```bash
@@ -30,6 +64,8 @@ recall load
 
 That's it. Your AI now knows your project.
 
+---
+
 ## 📖 Commands
 
 ### Project Management
@@ -47,11 +83,11 @@ recall load --at "2026-01-05"  # Time-travel to past state
 recall show                    # View full details
 ```
 
-### Search
+### Dependencies & Search
 ```bash
+recall deps <file>             # Show imports AND what depends on this file
 recall find "query"            # BM25-ranked search
 recall diff                    # Changes since last pack
-recall deps <file>             # File dependencies
 ```
 
 ### Notes
@@ -68,10 +104,61 @@ recall queries                 # View search history
 recall entity <file>           # View TODOs from code
 ```
 
+---
+
+## 🔄 Typical Workflow
+
+### 1. Starting a Session
+```bash
+$ recall load
+
+# Project: myapp
+Stack: React, Next.js, Supabase, TypeScript
+371 files, 96,987 lines
+
+## Directory Overview
+- components/ (253 files) - UI components
+- pages/ (61 files) - Page routes
+- lib/ (28 files) - Core libraries
+...
+```
+
+### 2. Before Editing a File
+```bash
+$ recall deps lib/auth.ts
+
+📁 lib/auth.ts
+   🔽 Imports (3 dependencies):
+      ← ./supabase
+      ← ./types
+   🔼 Imported by (12 files):
+      → pages/login.tsx
+      → pages/dashboard.tsx
+      → components/ProtectedRoute.tsx
+      ...
+   ⚠️  Change impact: 12 files depend on this
+```
+
+### 3. Searching for Code
+```bash
+$ recall find "authentication"
+
+📁 Files (ranked by relevance):
+   lib/auth.ts (0.85)
+   pages/login.tsx (0.72)
+
+⚡ Functions:
+   useAuth
+   validateToken
+```
+
+---
+
 ## ✨ Features
 
 - **Zero Dependencies** - Pure Python stdlib
 - **BM25 Search** - Relevance-ranked results
+- **Reverse Dependencies** - See what files depend on any file
 - **Time Travel** - Load past project states
 - **Entity Extraction** - Auto-extracts TODOs, notes from code
 - **Multi-Project** - Switch between projects instantly

@@ -918,6 +918,13 @@ def cmd_load(args) -> None:
             output.append(f"- [{s['date'][:10]}] {s['topic']}")
         output.append("")
     
+    # Add hints for AI assistants
+    output.append("---")
+    output.append("💡 **Commands:**")
+    output.append("   `recall deps <file>` → See imports AND what files depend on this (check before editing!)")
+    output.append("   `recall find <query>` → Search with BM25 ranking")
+    output.append("   `recall diff` → See changes since last pack")
+    
     print("\n".join(output))
 
 
@@ -1431,7 +1438,7 @@ def main():
     diff_parser.set_defaults(func=cmd_diff)
     
     # deps
-    deps_parser = subparsers.add_parser('deps', help='Show file dependencies')
+    deps_parser = subparsers.add_parser('deps', help='Show imports AND what files depend on this (critical before editing!)')
     deps_parser.add_argument('file', help='File to check')
     deps_parser.set_defaults(func=cmd_deps)
     
