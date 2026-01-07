@@ -808,6 +808,96 @@ def cmd_use(args) -> None:
     if memory.get("description"):
         print(f"   📝 {memory['description']}")
 
+def cmd_clear(args) -> None:
+    """Remove a memory and its history."""
+    alias = args.alias
+    
+    # Interactive selection if no alias provided
+    if not alias:
+        memories = list_memories()
+        if not memories:
+            print("No memories to clear.")
+            return
+        
+        print("📚 Select a memory to clear:\n")
+        for i, mem in enumerate(memories, 1):
+            stats = mem.get("stats", {})
+            files = stats.get("total_files", 0)
+            print(f"   {i}. {mem['alias']} ({files} files)")
+        print(f"   0. Cancel")
+        print()
+        
+        try:
+            choice = input("Enter number: ").strip()
+            if choice == "0" or not choice:
+                print("❌ Cancelled")
+                return
+            
+            idx = int(choice) - 1
+            if idx < 0 or idx >= len(memories):
+                print("❌ Invalid selection")
+                return
+            
+            alias = memories[idx]["alias"]
+        except (ValueError, KeyboardInterrupt):
+            print("\n❌ Cancelled")
+            return
+    
+    mem_path = get_memory_path(alias)
+    history_path = get_history_dir(alias)
+    
+    if not mem_path.exists():
+        print(f"❌ No memory found for '{alias}'")
+        print("   Run 'recall list' to see available projects")
+        sys.exit(1)
+    
+    # Confirm deletion
+    if not args.force:
+        print(f"\n⚠️  This will delete memory '{alias}' and all its history.")
+        print(f"   Memory: {mem_path}")
+        if history_path.exists():
+            snapshots = list(history_path.glob("*.mem.gz"))
+            print(f"   History: {len(snapshots)} snapshots")
+        response = input("   Type 'yes' to confirm: ")
+        if response.lower() != 'yes':
+            print("❌ Cancelled")
+            return
+    
+    # Delete memory file
+    mem_path.unlink()
+    
+    # Delete history directory
+    if history_path.exists():
+        import shutil
+        shutil.rmtree(history_path)
+    
+    # Clear current if this was active
+    current = get_current_project()
+    if current == alias:
+        CURRENT_FILE.unlink(missing_ok=True)
+    
+    print(f"✅ Cleared memory: {alias}")
+
+
+def cmd_init(args) -> None:
+    """Initialize memory for current directory (auto-detect project)."""
+    project_path = Path.cwd().resolve()
+    project_name = project_path.name
+    
+    # Use provided alias or derive from folder name
+    alias = args.name or project_name
+    
+    print(f"📦 Initializing memory for: {project_path}")
+    print(f"   Alias: {alias}")
+    
+    # Create Args object for cmd_pack
+    class PackArgs:
+        path = str(project_path)
+        name = alias
+        output = None
+    
+    cmd_pack(PackArgs())
+
 
 def cmd_update(args) -> None:
     """Re-pack the currently active project."""
@@ -1401,8 +1491,20 @@ def find_mem_file() -> Optional[Path]:
 
 
 def main():
+    workflow_text = """
+🤖 WORKFLOW FOR AI ASSISTANTS:
+
+  1. Start session:     recall load              (get project context)
+  2. Find critical:     recall deps --top        (see most-depended files)
+  3. Before editing:    recall deps <file>       (check what depends on it)
+  4. After changes:     recall update            (refresh memory)
+
+💡 Partial names work: 'recall deps supabase' finds lib/supabase/client.ts
+"""
+    
     parser = argparse.ArgumentParser(
         description='Recall v1.1.0 - Portable Memory for AI Assistants',
+        epilog=workflow_text,
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     
@@ -1423,6 +1525,17 @@ def main():
     use_parser = subparsers.add_parser('use', help='Switch active project')
     use_parser.add_argument('alias', help='Project alias')
     use_parser.set_defaults(func=cmd_use)
+    
+    # clear
+    clear_parser = subparsers.add_parser('clear', help='Remove a memory and its history')
+    clear_parser.add_argument('alias', nargs='?', help='Project alias to remove (interactive if omitted)')
+    clear_parser.add_argument('-f', '--force', action='store_true', help='Skip confirmation')
+    clear_parser.set_defaults(func=cmd_clear)
+    
+    # init
+    init_parser = subparsers.add_parser('init', help='Initialize memory for current directory')
+    init_parser.add_argument('-n', '--name', help='Alias (defaults to folder name)')
+    init_parser.set_defaults(func=cmd_init)
     
     # update
     update_parser = subparsers.add_parser('update', help='Re-pack current project')

@@ -70,10 +70,15 @@ That's it. Your AI now knows your project.
 
 ### Project Management
 ```bash
-recall pack <path> --name <alias>   # Pack a project
+recall init                          # Initialize memory for current directory
+recall init --name myalias           # Initialize with custom alias
+recall pack <path> --name <alias>    # Pack a specific project
 recall list                          # List all projects
 recall use <alias>                   # Switch projects
 recall update                        # Re-pack current project
+recall clear <alias>                 # Remove a memory (with confirmation)
+recall clear                         # Interactive selector to pick which to delete
+recall clear <alias> -f              # Remove without confirmation
 ```
 
 ### Context for AI
