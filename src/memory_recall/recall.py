@@ -693,6 +693,38 @@ def cmd_pack(args) -> None:
     project_name = project_path.name
     alias = args.name or project_name
     
+    # Check for duplicates - is this folder already tracked under a different alias?
+    if args.name:
+        ensure_recall_home()
+        memories = list_memories()
+        for mem in memories:
+            if mem.get("path") == str(project_path) and mem["alias"] != alias:
+                print(f"⚠️  This folder is already tracked as '{mem['alias']}'")
+                print(f"   Path: {project_path}")
+                print()
+                print("   Options:")
+                print(f"   1. Update existing memory: recall update (after 'recall use {mem['alias']}')")
+                print(f"   2. Continue with new alias '{alias}'")
+                print("   0. Cancel")
+                print()
+                try:
+                    choice = input("   Enter choice (0/1/2): ").strip()
+                    if choice == "0" or not choice:
+                        print("❌ Cancelled")
+                        return
+                    elif choice == "1":
+                        # Switch to existing and update
+                        set_current_project(mem["alias"])
+                        print(f"   Switched to '{mem['alias']}', running update...")
+                        class UpdateArgs:
+                            pass
+                        cmd_update(UpdateArgs())
+                        return
+                    # choice == "2" continues with new alias
+                except KeyboardInterrupt:
+                    print("\n❌ Cancelled")
+                    return
+    
     if args.output:
         output_file = Path(args.output)
     elif args.name:

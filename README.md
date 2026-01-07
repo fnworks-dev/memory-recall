@@ -4,7 +4,33 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Zero Dependencies](https://img.shields.io/badge/dependencies-zero-brightgreen.svg)]()
 
-**Portable memory for AI assistants.** Give any AI instant context about your codebase.
+**Portable memory for AI assistants.** Pack your codebase into a single `.mem` file that gives AI instant context about your project structure, dependencies, and key files.
+
+---
+
+## 📋 TL;DR - Concepts
+
+### What is a Memory?
+A **Memory** (`.mem` file) is a compressed snapshot of your project containing:
+- Tech stack (React, Next.js, Supabase, etc.)
+- File structure and key files
+- Function/class index for search
+- Import graph for dependency tracking
+
+**One memory per project.** Stored in `~/.recall/memories/`.
+
+### What is a Snapshot?
+A **Snapshot** is a saved version of a memory (for time-travel). Created automatically when you run `recall update`.
+
+### Command Summary
+
+| Action | Command | Creates |
+|--------|---------|---------|
+| **Create memory** | `recall init` or `recall pack --name alias` | Memory |
+| **Update memory** | `recall update` | Snapshot + updated Memory |
+| **Read memory** | `recall load` | Nothing (just outputs) |
+| **Time-travel** | `recall load --at 2026-01-05` | Nothing (reads old snapshot) |
+| **Delete memory** | `recall clear` | Nothing (removes files) |
 
 ---
 
