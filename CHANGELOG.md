@@ -5,6 +5,24 @@ All notable changes to Memory Recall will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-01-14
+
+### Added
+- **Auto-Switch** - `recall pack --name` now automatically sets the project as active
+- **Context on Pack** - `pack` now outputs project overview, eliminating need for separate `load`
+- **Local-First Discovery** - `recall load` now checks for local `.mem` files before central store
+
+### Changed
+- Simplified workflow: `cd project && recall load` works with local .mem files
+- `pack` without `--name` creates local `.mem` file in project folder
+- `pack` with `--name` stores centrally and auto-switches
+- `load` command: prioritizes local .mem, falls back to central project
+
+### Removed
+- No more need for `recall use` after packing (happens automatically)
+
+---
+
 ## [1.1.0] - 2026-01-07
 
 ### Added

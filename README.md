@@ -17,7 +17,7 @@ A **Memory** (`.mem` file) is a compressed snapshot of your project containing:
 - Function/class index for search
 - Import graph for dependency tracking
 
-**One memory per project.** Stored in `~/.recall/memories/`.
+**One memory per project.** Can be stored locally in project folder or centrally in `~/.recall/memories/`.
 
 ### What is a Snapshot?
 A **Snapshot** is a saved version of a memory (for time-travel). Created automatically when you run `recall update`.
@@ -26,7 +26,7 @@ A **Snapshot** is a saved version of a memory (for time-travel). Created automat
 
 | Action | Command | Creates |
 |--------|---------|---------|
-| **Create memory** | `recall init` or `recall pack --name alias` | Memory |
+| **Create memory** | `recall init` or `recall pack --name alias` | Memory + Auto-switch + Context |
 | **Update memory** | `recall update` | Snapshot + updated Memory |
 | **Read memory** | `recall load` | Nothing (just outputs) |
 | **Time-travel** | `recall load --at 2026-01-05` | Nothing (reads old snapshot) |
@@ -38,11 +38,15 @@ A **Snapshot** is a saved version of a memory (for time-travel). Created automat
 
 > **IMPORTANT**: If you're an AI assistant (ChatGPT, Claude, Cursor, etc.), read this first.
 
-### Before Starting Any Task
+### Quick Workflow
 
 ```bash
-recall load                    # Get project overview: stack, key files, structure
+cd ~/myproject
+recall pack --name myproject    # Creates memory, auto-switches, shows context
+recall deps <filename>          # See dependencies before editing
 ```
+
+That's it. `recall pack` now shows the full project context, so you don't need a separate `recall load`.
 
 ### Before Modifying ANY File
 
@@ -59,7 +63,8 @@ This prevents breaking changes. The `deps` command shows:
 
 | When | Command | Why |
 |------|---------|-----|
-| Starting session | `recall load` | Get full project context |
+| Starting session | `cd project && recall load` | Loads local .mem or central project |
+| Starting session | `recall pack --name X` | Pack to central + auto-switch + show context |
 | Before editing | `recall deps <file>` | See dependencies + impact |
 | Looking for code | `recall find "query"` | BM25-ranked search |
 | Check what changed | `recall diff` | Files modified since last pack |
@@ -81,11 +86,14 @@ recall --help
 ## ⚡ Quick Start
 
 ```bash
-# Pack your project
-recall pack ~/projects/myapp --name myapp
+# Option 1: Local .mem file (stays in project folder)
+cd ~/projects/myapp
+recall pack                    # Creates myapp.mem locally
+recall load                    # Loads from current folder
 
-# Get context for AI (paste into ChatGPT, Claude, etc.)
-recall load
+# Option 2: Central store (accessible from anywhere)
+recall pack ~/projects/myapp --name myapp
+recall deps lib/auth.ts        # Works from any folder
 ```
 
 That's it. Your AI now knows your project.
@@ -98,9 +106,9 @@ That's it. Your AI now knows your project.
 ```bash
 recall init                          # Initialize memory for current directory
 recall init --name myalias           # Initialize with custom alias
-recall pack <path> --name <alias>    # Pack a specific project
+recall pack <path> --name <alias>    # Pack project, auto-switch, and show context
 recall list                          # List all projects
-recall use <alias>                   # Switch projects
+recall use <alias>                   # Switch projects (usually not needed)
 recall update                        # Re-pack current project
 recall clear <alias>                 # Remove a memory (with confirmation)
 recall clear                         # Interactive selector to pick which to delete
@@ -109,7 +117,7 @@ recall clear <alias> -f              # Remove without confirmation
 
 ### Context for AI
 ```bash
-recall load                    # Output context
+recall load                    # Loads local .mem, or central project if no local file
 recall load --at "2026-01-05"  # Time-travel to past state
 recall show                    # View full details
 ```
@@ -143,16 +151,26 @@ recall entity <file>           # View TODOs from code
 
 ### 1. Starting a Session
 ```bash
-$ recall load
+$ cd ~/projects/myapp
+$ recall pack --name myapp
+
+📦 Packing myapp...
+✅ Created myapp.mem (12.3 KB)
+   371 files, 96,987 lines indexed
+   Active project: myapp
 
 # Project: myapp
-Stack: React, Next.js, Supabase, TypeScript
-371 files, 96,987 lines
+Updated: 2026-01-14
+
+## Stack
+- Frontend: React, Next.js
+- Backend: Supabase
+- Language: TypeScript
 
 ## Directory Overview
-- components/ (253 files) - UI components
-- pages/ (61 files) - Page routes
-- lib/ (28 files) - Core libraries
+- `components/` (253 files) - UI components
+- `pages/` (61 files) - Page routes
+- `lib/` (28 files) - Core libraries
 ...
 ```
 
@@ -194,11 +212,16 @@ $ recall find "authentication"
 - **Reverse Dependencies** - See what files depend on any file
 - **Time Travel** - Load past project states
 - **Entity Extraction** - Auto-extracts TODOs, notes from code
-- **Multi-Project** - Switch between projects instantly
+- **Local or Central** - Store .mem in project folder or central `~/.recall/`
+- **Auto-Discovery** - `recall load` finds local .mem files automatically
 
 ## 📁 Storage
 
 ```
+# Local mode (stays in your project)
+~/projects/myapp/myapp.mem
+
+# Central mode (accessible from anywhere)
 ~/.recall/
 ├── memories/          # Your .mem files
 ├── history/           # Snapshots for time-travel

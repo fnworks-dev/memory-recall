@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Recall v1.1.0 - Portable Memory for AI Assistants
+Recall v1.2.0 - Portable Memory for AI Assistants
 Single-file memory with history, search, and entity tracking.
 
 Usage:
@@ -791,6 +791,8 @@ def cmd_pack(args) -> None:
     if args.name:
         set_current_project(alias)
         print(f"   Active project: {alias}")
+        print()
+        print_memory_context(memory)
 
 
 def cmd_list(args) -> None:
@@ -959,6 +961,68 @@ def cmd_update(args) -> None:
     cmd_pack(Args())
 
 
+def print_memory_context(memory: Dict, show_hints: bool = True) -> None:
+    """Print project context for AI consumption."""
+    output = []
+    output.append(f"# Project: {memory['project']}")
+    output.append(f"Updated: {memory['updated'][:10]}")
+    output.append("")
+
+    if memory.get('description'):
+        output.append("## Description")
+        output.append(memory['description'])
+        output.append("")
+
+    output.append("## Summary")
+    output.append(memory['summary'])
+    output.append("")
+
+    if memory.get('stack'):
+        output.append("## Stack")
+        for k, v in memory['stack'].items():
+            output.append(f"- {k}: {v}")
+        output.append("")
+
+    if memory.get('directories'):
+        output.append("## Directory Overview")
+        sorted_dirs = sorted(memory['directories'].items(),
+                           key=lambda x: x[1].get('files', 0), reverse=True)
+        for dir_name, info in sorted_dirs[:10]:
+            files = info.get('files', 0)
+            purpose = info.get('purpose', '')
+            output.append(f"- `{dir_name}/` ({files} files) - {purpose}")
+        output.append("")
+
+    if memory.get('key_files'):
+        output.append("## Key Files")
+        for f in memory['key_files'][:15]:
+            funcs = ", ".join(f.get('functions', []))
+            func_str = f" ({funcs})" if funcs else ""
+            output.append(f"- `{f['path']}` - {f.get('purpose', '')}{func_str}")
+        output.append("")
+
+    if memory.get('decisions'):
+        output.append("## Decisions")
+        for d in memory['decisions'][-5:]:
+            output.append(f"- [{d['date'][:10]}] {d['note']}")
+        output.append("")
+
+    if memory.get('sessions'):
+        output.append("## Recent Sessions")
+        for s in memory['sessions'][-3:]:
+            output.append(f"- [{s['date'][:10]}] {s['topic']}")
+        output.append("")
+
+    if show_hints:
+        output.append("---")
+        output.append("💡 **Commands:**")
+        output.append("   `recall deps <file>` → See imports AND what files depend on this (check before editing!)")
+        output.append("   `recall find <query>` → Search with BM25 ranking")
+        output.append("   `recall diff` → See changes since last pack")
+
+    print("\n".join(output))
+
+
 def cmd_load(args) -> None:
     """Output context from a .mem file for AI consumption."""
     # Handle time-travel
@@ -979,75 +1043,20 @@ def cmd_load(args) -> None:
             sys.exit(1)
         memory = load_memory(mem_file)
     else:
-        current = get_current_project()
-        if current:
-            mem_file = get_memory_path(current)
-        else:
-            mem_file = find_mem_file()
-        
+        # Priority: 1) local .mem file, 2) active project in central store
+        mem_file = find_mem_file()
+        if not mem_file:
+            current = get_current_project()
+            if current:
+                mem_file = get_memory_path(current)
+
         if not mem_file or not mem_file.exists():
-            print("❌ No .mem file found. Run 'recall pack' first.")
+            print("❌ No .mem file found in current directory or central store.")
+            print("   Run 'recall pack --name <alias>' to create one, or 'recall pack' for local .mem file.")
             sys.exit(1)
         memory = load_memory(mem_file)
-    
-    output = []
-    output.append(f"# Project: {memory['project']}")
-    output.append(f"Updated: {memory['updated'][:10]}")
-    output.append("")
-    
-    if memory.get('description'):
-        output.append("## Description")
-        output.append(memory['description'])
-        output.append("")
-    
-    output.append("## Summary")
-    output.append(memory['summary'])
-    output.append("")
-    
-    if memory.get('stack'):
-        output.append("## Stack")
-        for k, v in memory['stack'].items():
-            output.append(f"- {k}: {v}")
-        output.append("")
-    
-    if memory.get('directories'):
-        output.append("## Directory Overview")
-        sorted_dirs = sorted(memory['directories'].items(), 
-                           key=lambda x: x[1].get('files', 0), reverse=True)
-        for dir_name, info in sorted_dirs[:10]:
-            files = info.get('files', 0)
-            purpose = info.get('purpose', '')
-            output.append(f"- `{dir_name}/` ({files} files) - {purpose}")
-        output.append("")
-    
-    if memory.get('key_files'):
-        output.append("## Key Files")
-        for f in memory['key_files'][:15]:
-            funcs = ", ".join(f.get('functions', []))
-            func_str = f" ({funcs})" if funcs else ""
-            output.append(f"- `{f['path']}` - {f.get('purpose', '')}{func_str}")
-        output.append("")
-    
-    if memory.get('decisions'):
-        output.append("## Decisions")
-        for d in memory['decisions'][-5:]:
-            output.append(f"- [{d['date'][:10]}] {d['note']}")
-        output.append("")
-    
-    if memory.get('sessions'):
-        output.append("## Recent Sessions")
-        for s in memory['sessions'][-3:]:
-            output.append(f"- [{s['date'][:10]}] {s['topic']}")
-        output.append("")
-    
-    # Add hints for AI assistants
-    output.append("---")
-    output.append("💡 **Commands:**")
-    output.append("   `recall deps <file>` → See imports AND what files depend on this (check before editing!)")
-    output.append("   `recall find <query>` → Search with BM25 ranking")
-    output.append("   `recall diff` → See changes since last pack")
-    
-    print("\n".join(output))
+
+    print_memory_context(memory)
 
 
 def cmd_describe(args) -> None:
