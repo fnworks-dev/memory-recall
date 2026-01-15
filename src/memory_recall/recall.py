@@ -1016,9 +1016,10 @@ def print_memory_context(memory: Dict, show_hints: bool = True) -> None:
     if show_hints:
         output.append("---")
         output.append("💡 **Commands:**")
-        output.append("   `recall deps <file>` → See imports AND what files depend on this (check before editing!)")
+        output.append("   `recall deps <file>` → Full dependencies for a specific file")
         output.append("   `recall find <query>` → Search with BM25 ranking")
         output.append("   `recall diff` → See changes since last pack")
+        output.append("   `recall update` → Refresh memory after changes")
 
     print("\n".join(output))
 
@@ -1043,12 +1044,16 @@ def cmd_load(args) -> None:
             sys.exit(1)
         memory = load_memory(mem_file)
     else:
-        # Priority: 1) local .mem file, 2) active project in central store
-        mem_file = find_mem_file()
-        if not mem_file:
-            current = get_current_project()
-            if current:
-                mem_file = get_memory_path(current)
+        # Priority: 1) active project in central store, 2) local .mem file
+        current = get_current_project()
+        mem_file = None
+
+        if current:
+            mem_file = get_memory_path(current)
+
+        if not mem_file or not mem_file.exists():
+            # No central project, try local .mem file
+            mem_file = find_mem_file()
 
         if not mem_file or not mem_file.exists():
             print("❌ No .mem file found in current directory or central store.")
@@ -1057,6 +1062,33 @@ def cmd_load(args) -> None:
         memory = load_memory(mem_file)
 
     print_memory_context(memory)
+
+    # Show top dependencies
+    import_graph = memory.get("index", {}).get("imports", {})
+    all_files = memory.get("index", {}).get("files", [])
+
+    if import_graph and all_files:
+        # Count dependents for each file (same logic as --top flag)
+        dep_counts = {}
+        for file_path in all_files:
+            file_basename = file_path.split('/')[-1].replace('.tsx', '').replace('.ts', '').replace('.js', '').replace('.jsx', '').replace('.py', '')
+            importers = set()
+            for importer_path, importer_imports in import_graph.items():
+                for imp in importer_imports:
+                    if file_basename in imp or file_path in imp:
+                        importers.add(importer_path)
+                        break
+            dep_counts[file_path] = len(importers)
+
+        # Sort and show top 10
+        sorted_files = sorted(dep_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+        top_with_deps = [(f, c) for f, c in sorted_files if c > 0]
+
+        if top_with_deps:
+            print()
+            print("## Most Connected Files (change impact)")
+            for file_path, count in top_with_deps:
+                print(f"   {file_path} ({count} files depend on this)")
 
 
 def cmd_describe(args) -> None:
@@ -1535,16 +1567,15 @@ def main():
     workflow_text = """
 🤖 WORKFLOW FOR AI ASSISTANTS:
 
-  1. Start session:     recall load              (get project context)
-  2. Find critical:     recall deps --top        (see most-depended files)
-  3. Before editing:    recall deps <file>       (check what depends on it)
-  4. After changes:     recall update            (refresh memory)
+  1. Start session:     recall load              (get context + top dependencies)
+  2. Before editing:    recall deps <file>       (check what depends on it)
+  3. After changes:     recall update            (refresh memory)
 
 💡 Partial names work: 'recall deps supabase' finds lib/supabase/client.ts
 """
     
     parser = argparse.ArgumentParser(
-        description='Recall v1.1.0 - Portable Memory for AI Assistants',
+        description='Recall v1.3.0 - Portable Memory for AI Assistants',
         epilog=workflow_text,
         formatter_class=argparse.RawDescriptionHelpFormatter
     )

@@ -42,11 +42,12 @@ A **Snapshot** is a saved version of a memory (for time-travel). Created automat
 
 ```bash
 cd ~/myproject
-recall pack --name myproject    # Creates memory, auto-switches, shows context
-recall deps <filename>          # See dependencies before editing
+recall pack                      # Creates .mem file
+recall load                      # Shows context + top dependencies
+recall deps <filename>           # Full dependencies before editing
 ```
 
-That's it. `recall pack` now shows the full project context, so you don't need a separate `recall load`.
+**Two commands to start:** `recall pack` + `recall load` gives you full project context including the most critical files (by dependencies).
 
 ### Before Modifying ANY File
 
@@ -63,9 +64,9 @@ This prevents breaking changes. The `deps` command shows:
 
 | When | Command | Why |
 |------|---------|-----|
-| Starting session | `cd project && recall load` | Loads local .mem or central project |
-| Starting session | `recall pack --name X` | Pack to central + auto-switch + show context |
-| Before editing | `recall deps <file>` | See dependencies + impact |
+| Starting session | `recall pack` | Create memory |
+| Starting session | `recall load` | Get context + top dependencies |
+| Before editing | `recall deps <file>` | Full dependencies for specific file |
 | Looking for code | `recall find "query"` | BM25-ranked search |
 | Check what changed | `recall diff` | Files modified since last pack |
 
@@ -126,7 +127,6 @@ recall show                    # View full details
 ```bash
 recall deps <file>             # Show imports AND what depends on this file
 recall deps supabase           # Partial names work! Finds lib/supabase/client.ts
-recall deps --top              # Show top 10 most-depended-on files
 recall find "query"            # BM25-ranked search
 recall diff                    # Changes since last pack
 ```
