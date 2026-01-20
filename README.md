@@ -42,12 +42,26 @@ A **Snapshot** is a saved version of a memory (for time-travel). Created automat
 
 ```bash
 cd ~/myproject
-recall pack                      # Creates .mem file
-recall load                      # Shows context + top dependencies
+recall pack                      # Creates .mem file (first time only)
+recall load                      # Shows context + entry points + architecture
 recall deps <filename>           # Full dependencies before editing
 ```
 
-**Two commands to start:** `recall pack` + `recall load` gives you full project context including the most critical files (by dependencies).
+**Two commands to start:** `recall pack` + `recall load` gives you full project context including:
+- Entry points (where to start reading)
+- Architecture layers (UI → API → Business Logic → Data)
+- Most connected files (highest change impact)
+- Coupling warnings (circular dependencies)
+
+### Smart Project Detection (v1.4.0+)
+
+`recall load` **automatically detects** which project you're in based on your current directory. No need to manually switch projects!
+
+```bash
+cd ~/projects/frontend && recall load   # Shows frontend project
+cd ~/projects/backend && recall load    # Shows backend project
+cd ~/projects/frontend/src && recall load  # Still shows frontend (subdirectory)
+```
 
 ### Before Modifying ANY File
 
@@ -64,11 +78,12 @@ This prevents breaking changes. The `deps` command shows:
 
 | When | Command | Why |
 |------|---------|-----|
-| Starting session | `recall pack` | Create memory |
-| Starting session | `recall load` | Get context + top dependencies |
+| Starting session | `recall pack` | Create memory (first time) |
+| Starting session | `recall load` | Get context + entry points + architecture |
 | Before editing | `recall deps <file>` | Full dependencies for specific file |
 | Looking for code | `recall find "query"` | BM25-ranked search |
 | Check what changed | `recall diff` | Files modified since last pack |
+| Large projects | `recall load --compact` | Minimal output |
 
 ---
 
@@ -118,7 +133,8 @@ recall clear <alias> -f              # Remove without confirmation
 
 ### Context for AI
 ```bash
-recall load                    # Loads local .mem, or central project if no local file
+recall load                    # Auto-detects project based on current directory
+recall load --compact          # Minimal output for large projects
 recall load --at "2026-01-05"  # Time-travel to past state
 recall show                    # View full details
 ```
@@ -160,18 +176,26 @@ $ recall pack --name myapp
    Active project: myapp
 
 # Project: myapp
-Updated: 2026-01-14
+Updated: 2026-01-20
 
 ## Stack
 - Frontend: React, Next.js
 - Backend: Supabase
 - Language: TypeScript
 
-## Directory Overview
-- `components/` (253 files) - UI components
-- `pages/` (61 files) - Page routes
-- `lib/` (28 files) - Core libraries
-...
+## Entry Points
+   app/page.tsx - Main page entry
+   app/api/auth/route.ts - API handler
+   lib/db.ts - Core module
+
+## Architecture
+   UI Layer: `components/`, `pages/`
+   API Layer: `app/api/`
+   Business Logic: `lib/`, `services/`
+
+## Most Connected Files (change impact)
+   lib/utils.ts (45 files depend on this)
+   lib/db.ts (32 files depend on this)
 ```
 
 ### 2. Before Editing a File
@@ -208,12 +232,16 @@ $ recall find "authentication"
 ## ✨ Features
 
 - **Zero Dependencies** - Pure Python stdlib
+- **Smart Project Detection** - Auto-detects project from current directory (v1.4.0+)
+- **Entry Points** - Shows WHERE to start reading the codebase
+- **Architecture Layers** - Detects UI/API/Business Logic/Data layers
+- **Coupling Warnings** - Detects circular dependencies
 - **BM25 Search** - Relevance-ranked results
 - **Reverse Dependencies** - See what files depend on any file
 - **Time Travel** - Load past project states
 - **Entity Extraction** - Auto-extracts TODOs, notes from code
+- **Compact Mode** - Minimal output for large projects
 - **Local or Central** - Store .mem in project folder or central `~/.recall/`
-- **Auto-Discovery** - `recall load` finds local .mem files automatically
 
 ## 📁 Storage
 
@@ -226,7 +254,7 @@ $ recall find "authentication"
 ├── memories/          # Your .mem files
 ├── history/           # Snapshots for time-travel
 ├── queries.json       # Search history
-└── current            # Active project
+└── current            # Fallback active project
 ```
 
 ## 🛠️ Requirements

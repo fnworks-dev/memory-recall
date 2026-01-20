@@ -5,6 +5,24 @@ All notable changes to Memory Recall will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-01-20
+
+### Fixed
+- **Smart Project Detection** - `recall load` now correctly detects project based on current working directory
+  - Matches CWD against stored project paths instead of relying on global `current` file
+  - Fixes issue where running `recall load` from wrong directory showed wrong project
+
+### Added
+- **Entry Points Section** - Shows WHERE to start reading (main page, API handlers, core modules)
+- **Architecture Layers** - Detects and displays data flow direction (UI → API → Business Logic → Data)
+- **Coupling Warnings** - Detects circular/mutual dependencies that could cause cascade bugs
+- **Compact Mode** - `recall load --compact` for minimal output on large 500+ file projects
+
+### Changed
+- Load priority is now: 1) Smart CWD detection → 2) Global current file → 3) Local .mem file
+
+---
+
 ## [1.3.0] - 2026-01-15
 
 ### Added

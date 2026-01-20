@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "memory-recall"
-version = "1.3.0"
+version = "1.4.0"
 description = "Portable memory for AI assistants. Zero dependencies."
 readme = "README.md"
 license = {text = "MIT"}

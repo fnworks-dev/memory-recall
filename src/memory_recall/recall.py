@@ -224,6 +224,44 @@ def get_history_dir(alias: str) -> Path:
     return HISTORY_DIR / alias
 
 
+def detect_project_for_cwd() -> Optional[str]:
+    """Detect which project the current working directory belongs to.
+    
+    Matches CWD against stored project paths in ~/.recall/memories/.
+    Returns the alias of the MOST SPECIFIC match (deepest path that contains CWD).
+    This ensures nested projects are correctly detected over parent directories.
+    """
+    if not MEMORIES_DIR.exists():
+        return None
+    
+    cwd = Path.cwd().resolve()
+    matches = []  # (alias, path_depth)
+    
+    for mem_file in MEMORIES_DIR.glob(f"*{MEM_EXTENSION}"):
+        try:
+            memory = load_memory(mem_file)
+            project_path = memory.get("path", "")
+            if project_path:
+                project_path = Path(project_path).resolve()
+                # Check if CWD is the project path or a subdirectory
+                try:
+                    cwd.relative_to(project_path)
+                    # Calculate path depth (more parts = more specific)
+                    depth = len(project_path.parts)
+                    matches.append((mem_file.stem, depth))
+                except ValueError:
+                    continue
+        except:
+            continue
+    
+    if not matches:
+        return None
+    
+    # Return the most specific match (deepest path)
+    matches.sort(key=lambda x: x[1], reverse=True)
+    return matches[0][0]
+
+
 def log_query(query: str, command: str, results_count: int) -> None:
     """Log a query to the queries file."""
     ensure_recall_home()
@@ -961,8 +999,14 @@ def cmd_update(args) -> None:
     cmd_pack(Args())
 
 
-def print_memory_context(memory: Dict, show_hints: bool = True) -> None:
-    """Print project context for AI consumption."""
+def print_memory_context(memory: Dict, show_hints: bool = True, compact: bool = False) -> None:
+    """Print project context for AI consumption.
+    
+    Args:
+        memory: The memory dict to display
+        show_hints: Whether to show command hints at the end
+        compact: If True, show minimal output for large projects
+    """
     output = []
     output.append(f"# Project: {memory['project']}")
     output.append(f"Updated: {memory['updated'][:10]}")
@@ -983,35 +1027,40 @@ def print_memory_context(memory: Dict, show_hints: bool = True) -> None:
             output.append(f"- {k}: {v}")
         output.append("")
 
-    if memory.get('directories'):
-        output.append("## Directory Overview")
-        sorted_dirs = sorted(memory['directories'].items(),
-                           key=lambda x: x[1].get('files', 0), reverse=True)
-        for dir_name, info in sorted_dirs[:10]:
-            files = info.get('files', 0)
-            purpose = info.get('purpose', '')
-            output.append(f"- `{dir_name}/` ({files} files) - {purpose}")
-        output.append("")
+    # In compact mode, skip directory overview and limit key files
+    if not compact:
+        if memory.get('directories'):
+            output.append("## Directory Overview")
+            sorted_dirs = sorted(memory['directories'].items(),
+                               key=lambda x: x[1].get('files', 0), reverse=True)
+            for dir_name, info in sorted_dirs[:10]:
+                files = info.get('files', 0)
+                purpose = info.get('purpose', '')
+                output.append(f"- `{dir_name}/` ({files} files) - {purpose}")
+            output.append("")
 
     if memory.get('key_files'):
         output.append("## Key Files")
-        for f in memory['key_files'][:15]:
+        limit = 5 if compact else 15
+        for f in memory['key_files'][:limit]:
             funcs = ", ".join(f.get('functions', []))
             func_str = f" ({funcs})" if funcs else ""
             output.append(f"- `{f['path']}` - {f.get('purpose', '')}{func_str}")
         output.append("")
 
-    if memory.get('decisions'):
-        output.append("## Decisions")
-        for d in memory['decisions'][-5:]:
-            output.append(f"- [{d['date'][:10]}] {d['note']}")
-        output.append("")
+    # Skip decisions and sessions in compact mode
+    if not compact:
+        if memory.get('decisions'):
+            output.append("## Decisions")
+            for d in memory['decisions'][-5:]:
+                output.append(f"- [{d['date'][:10]}] {d['note']}")
+            output.append("")
 
-    if memory.get('sessions'):
-        output.append("## Recent Sessions")
-        for s in memory['sessions'][-3:]:
-            output.append(f"- [{s['date'][:10]}] {s['topic']}")
-        output.append("")
+        if memory.get('sessions'):
+            output.append("## Recent Sessions")
+            for s in memory['sessions'][-3:]:
+                output.append(f"- [{s['date'][:10]}] {s['topic']}")
+            output.append("")
 
     if show_hints:
         output.append("---")
@@ -1044,15 +1093,25 @@ def cmd_load(args) -> None:
             sys.exit(1)
         memory = load_memory(mem_file)
     else:
-        # Priority: 1) active project in central store, 2) local .mem file
-        current = get_current_project()
+        # NEW Priority:
+        # 1) Smart detection: match CWD against stored project paths
+        # 2) Fallback to global current file
+        # 3) Local .mem file in directory tree
+        
+        detected = detect_project_for_cwd()
         mem_file = None
-
-        if current:
-            mem_file = get_memory_path(current)
+        
+        if detected:
+            mem_file = get_memory_path(detected)
+        
+        if not mem_file or not mem_file.exists():
+            # Fallback to global current
+            current = get_current_project()
+            if current:
+                mem_file = get_memory_path(current)
 
         if not mem_file or not mem_file.exists():
-            # No central project, try local .mem file
+            # Last resort: local .mem file
             mem_file = find_mem_file()
 
         if not mem_file or not mem_file.exists():
@@ -1061,14 +1120,45 @@ def cmd_load(args) -> None:
             sys.exit(1)
         memory = load_memory(mem_file)
 
-    print_memory_context(memory)
-
-    # Show top dependencies
+    # Check for compact mode
+    compact = getattr(args, 'compact', False)
+    
+    print_memory_context(memory, compact=compact)
+    
+    # Get import graph for analysis
     import_graph = memory.get("index", {}).get("imports", {})
     all_files = memory.get("index", {}).get("files", [])
-
+    
+    # === Entry Points Section ===
+    if not compact:
+        entry_points = detect_entry_points(all_files, memory.get("key_files", []))
+        if entry_points:
+            print()
+            print("## Entry Points")
+            for ep in entry_points[:5]:
+                print(f"   {ep['path']} - {ep['type']}")
+    
+    # === Architecture Layers Section ===
+    if not compact:
+        layers = detect_architecture_layers(memory.get("directories", {}))
+        if layers:
+            print()
+            print("## Architecture")
+            for layer_name, dirs in layers.items():
+                if dirs:
+                    print(f"   {layer_name}: {', '.join(dirs)}")
+    
+    # === Coupling Warnings ===
+    if import_graph:
+        coupling = detect_circular_dependencies(import_graph)
+        if coupling:
+            print()
+            print("⚠️  **Tight Coupling Detected:**")
+            for pair in coupling[:3]:  # Show max 3
+                print(f"   {pair[0]} ↔ {pair[1]} (mutual dependency)")
+    
+    # === Most Connected Files ===
     if import_graph and all_files:
-        # Count dependents for each file (same logic as --top flag)
         dep_counts = {}
         for file_path in all_files:
             file_basename = file_path.split('/')[-1].replace('.tsx', '').replace('.ts', '').replace('.js', '').replace('.jsx', '').replace('.py', '')
@@ -1080,7 +1170,6 @@ def cmd_load(args) -> None:
                         break
             dep_counts[file_path] = len(importers)
 
-        # Sort and show top 10
         sorted_files = sorted(dep_counts.items(), key=lambda x: x[1], reverse=True)[:10]
         top_with_deps = [(f, c) for f, c in sorted_files if c > 0]
 
@@ -1089,6 +1178,95 @@ def cmd_load(args) -> None:
             print("## Most Connected Files (change impact)")
             for file_path, count in top_with_deps:
                 print(f"   {file_path} ({count} files depend on this)")
+
+
+def detect_entry_points(all_files: List[str], key_files: List[Dict]) -> List[Dict]:
+    """Detect application entry points."""
+    entry_points = []
+    
+    # Patterns for entry points
+    entry_patterns = [
+        (r'^app/page\.(tsx?|jsx?)$', 'Main page entry'),
+        (r'^pages/index\.(tsx?|jsx?)$', 'Main page entry'),
+        (r'^app/layout\.(tsx?|jsx?)$', 'Root layout'),
+        (r'^src/index\.(tsx?|jsx?|ts|js)$', 'App entry'),
+        (r'^index\.(tsx?|jsx?|ts|js)$', 'App entry'),
+        (r'^main\.py$', 'Python entry'),
+        (r'^app\.py$', 'Python app'),
+        (r'^app/api/.+/route\.(tsx?|ts)$', 'API handler'),
+        (r'^pages/api/.+\.(tsx?|ts|js)$', 'API handler'),
+    ]
+    
+    for file_path in all_files:
+        for pattern, entry_type in entry_patterns:
+            if re.match(pattern, file_path):
+                entry_points.append({'path': file_path, 'type': entry_type})
+                break
+    
+    # Also add high-dependency files as "Core modules"
+    key_file_paths = {kf.get('path', '') for kf in key_files[:3]}
+    for kf in key_files[:3]:
+        path = kf.get('path', '')
+        if path and path not in [ep['path'] for ep in entry_points]:
+            entry_points.append({'path': path, 'type': 'Core module'})
+    
+    return entry_points[:8]
+
+
+def detect_architecture_layers(directories: Dict) -> Dict[str, List[str]]:
+    """Detect architectural layers from directory structure."""
+    layers = {
+        'UI Layer': [],
+        'API Layer': [],
+        'Business Logic': [],
+        'Data Layer': [],
+    }
+    
+    layer_patterns = {
+        'UI Layer': ['components', 'pages', 'views', 'screens', 'ui'],
+        'API Layer': ['api', 'routes', 'controllers', 'handlers'],
+        'Business Logic': ['lib', 'services', 'utils', 'helpers', 'core'],
+        'Data Layer': ['db', 'database', 'models', 'repositories', 'store'],
+    }
+    
+    for dir_name in directories.keys():
+        dir_lower = dir_name.lower()
+        for layer, patterns in layer_patterns.items():
+            for pattern in patterns:
+                if pattern in dir_lower:
+                    if dir_name not in layers[layer]:
+                        layers[layer].append(f"`{dir_name}/`")
+                    break
+    
+    # Filter out empty layers
+    return {k: v for k, v in layers.items() if v}
+
+
+def detect_circular_dependencies(import_graph: Dict[str, List[str]]) -> List[Tuple[str, str]]:
+    """Detect circular/mutual dependencies in import graph."""
+    circular = []
+    checked = set()
+    
+    for file_a, imports_a in import_graph.items():
+        for imp in imports_a:
+            # Find files that match this import
+            for file_b, imports_b in import_graph.items():
+                if file_a == file_b:
+                    continue
+                
+                # Check if imp refers to file_b
+                file_b_base = file_b.split('/')[-1].replace('.tsx', '').replace('.ts', '').replace('.js', '').replace('.jsx', '').replace('.py', '')
+                if file_b_base in imp or file_b in imp:
+                    # Now check if file_b imports file_a
+                    file_a_base = file_a.split('/')[-1].replace('.tsx', '').replace('.ts', '').replace('.js', '').replace('.jsx', '').replace('.py', '')
+                    for imp_b in imports_b:
+                        if file_a_base in imp_b or file_a in imp_b:
+                            pair = tuple(sorted([file_a, file_b]))
+                            if pair not in checked:
+                                checked.add(pair)
+                                circular.append(pair)
+    
+    return circular
 
 
 def cmd_describe(args) -> None:
@@ -1575,7 +1753,7 @@ def main():
 """
     
     parser = argparse.ArgumentParser(
-        description='Recall v1.3.0 - Portable Memory for AI Assistants',
+        description='Recall v1.4.0 - Portable Memory for AI Assistants',
         epilog=workflow_text,
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -1617,6 +1795,7 @@ def main():
     load_parser = subparsers.add_parser('load', help='Output context for AI')
     load_parser.add_argument('file', nargs='?', help='.mem file')
     load_parser.add_argument('--at', help='Time-travel to date (YYYY-MM-DD)')
+    load_parser.add_argument('--compact', '-c', action='store_true', help='Compact output for large projects')
     load_parser.set_defaults(func=cmd_load)
     
     # describe
